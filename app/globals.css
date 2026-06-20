@@ -1,0 +1,143 @@
+@import "tailwindcss";
+
+/* next-themes sets class="dark" on <html>, so wire dark: to that class */
+@custom-variant dark (&:where(.dark, .dark *));
+
+@theme {
+  --font-sans: ui-sans-serif, system-ui, -apple-system,
+    "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+
+  /* A quiet, near-neutral scale. The page is typography on paper — no accent. */
+  --color-paper: #ffffff;
+  --color-ink: #111111;
+  --color-muted: #555555;
+  --color-faint: #888888;
+  --color-line: #ededed;
+
+  --color-paper-dark: #0a0a0a;
+  --color-ink-dark: #ededed;
+  --color-muted-dark: #a1a1a1;
+  --color-faint-dark: #707070;
+  --color-line-dark: #1f1f1f;
+}
+
+html {
+  color-scheme: light dark;
+}
+
+body {
+  background: var(--color-paper);
+  color: var(--color-ink);
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+}
+
+.dark body {
+  background: var(--color-paper-dark);
+  color: var(--color-ink-dark);
+}
+
+/* Links read as ink with a soft underline that warms on hover — the only
+   interactive flourish on the page. */
+.prose a {
+  text-decoration: underline;
+  text-decoration-color: var(--color-line);
+  text-underline-offset: 3px;
+  transition: text-decoration-color 150ms ease;
+}
+.prose a:hover {
+  text-decoration-color: currentColor;
+}
+.dark .prose a {
+  text-decoration-color: var(--color-line-dark);
+}
+.dark .prose a:hover {
+  text-decoration-color: currentColor;
+}
+
+/* Markdown post body ---------------------------------------------------- */
+.post-body {
+  font-size: 15px;
+  line-height: 1.75;
+  color: var(--color-muted);
+  text-align: justify;
+}
+.dark .post-body {
+  color: var(--color-muted-dark);
+}
+.post-body p {
+  margin-bottom: 1.25rem;
+}
+.post-body h2 {
+  margin-top: 2rem;
+  margin-bottom: 0.5rem;
+  font-size: 1rem;
+  font-weight: 600;
+  color: var(--color-ink);
+}
+.dark .post-body h2 {
+  color: var(--color-ink-dark);
+}
+.post-body strong {
+  font-weight: 600;
+  color: var(--color-ink);
+}
+.dark .post-body strong {
+  color: var(--color-ink-dark);
+}
+.post-body a {
+  text-decoration: underline;
+  text-decoration-color: var(--color-line);
+  text-underline-offset: 3px;
+  transition: text-decoration-color 150ms ease;
+}
+.post-body a:hover {
+  text-decoration-color: currentColor;
+}
+.dark .post-body a {
+  text-decoration-color: var(--color-line-dark);
+}
+.dark .post-body a:hover {
+  text-decoration-color: currentColor;
+}
+.post-body code {
+  font-family: ui-monospace, "Cascadia Code", "Source Code Pro", monospace;
+  font-size: 0.875em;
+  background: var(--color-line);
+  padding: 0.15em 0.35em;
+  border-radius: 3px;
+}
+.dark .post-body code {
+  background: var(--color-line-dark);
+}
+.post-body ul,
+.post-body ol {
+  padding-left: 1.5rem;
+  margin-bottom: 1.25rem;
+}
+.post-body ul {
+  list-style-type: disc;
+}
+.post-body ol {
+  list-style-type: decimal;
+}
+.post-body li {
+  margin-bottom: 0.25rem;
+}
+.post-body blockquote {
+  border-left: 2px solid var(--color-line);
+  padding-left: 1rem;
+  color: var(--color-faint);
+  margin: 1.5rem 0;
+}
+.dark .post-body blockquote {
+  border-left-color: var(--color-line-dark);
+  color: var(--color-faint-dark);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  * {
+    transition: none !important;
+    animation: none !important;
+  }
+}
