@@ -17,6 +17,10 @@ npm run dev          # http://localhost:3000
 The site renders fine with no Spotify keys — the listening line and music page
 just stay empty until you connect Spotify.
 
+The uni dashboard also renders without Neon. Until `DATABASE_URL` is configured,
+changes are stored locally in the browser. Set `UNI_DASHBOARD_PASSWORD` to put
+the dashboard and its course API behind a simple password gate.
+
 ## Connecting Spotify (one-time)
 
 The integration uses the OAuth **refresh-token** flow: you authorise once, store
@@ -45,6 +49,10 @@ Scopes requested: `user-read-currently-playing`, `user-read-recently-played`,
 | --- | --- |
 | `app/page.tsx` | Homepage — intro prose + favorite writing + live "last listened to" line |
 | `app/music/page.tsx` | Top Artists + Top Tracks, numbered with artwork |
+| `app/apps/uni-dashboard/page.tsx` | Uni course tracker with ECTS, grade, semester, and exam views |
+| `app/api/uni/courses/*` | Server-side course API backed by Neon Postgres |
+| `lib/uni/*` | Uni course types, seed data, stats, and Neon data access |
+| `db/uni-dashboard.sql` | Optional SQL schema if you want to create the table manually in Neon |
 | `app/api/spotify/now-playing/route.ts` | Optional JSON endpoint for a client-side live widget |
 | `lib/spotify.ts` | All Spotify calls (token refresh, now-playing, recent, top tracks/artists) |
 | `components/theme-*.tsx` | Dark/light mode (next-themes) |
@@ -66,9 +74,24 @@ Push to GitHub and import into Vercel. Add the three `SPOTIFY_*` variables in
 the Vercel project settings (Settings → Environment Variables). That's it — the
 same refresh token works in production.
 
+For the uni dashboard, create a Neon database and add its pooled connection
+string as `DATABASE_URL` in Vercel. The app creates `uni_courses` automatically
+on first load and seeds it with the existing course list when the table is empty.
+If you prefer to run SQL yourself, use `db/uni-dashboard.sql`.
+
+Also add `UNI_DASHBOARD_PASSWORD` in Vercel for Production and any Preview
+environment you want protected. The app stores a 30-day HttpOnly session cookie
+after a successful unlock.
+
+The dashboard route is `/apps/uni-dashboard`. `vercel.json` also rewrites
+`apps.bendemaj.com/uni-dashboard` to that route when the `apps.bendemaj.com`
+domain is attached to the same Vercel project.
+
 ## Notes
 
 - Pages use Incremental Static Regeneration (`revalidate`) so Spotify data stays
   fresh without re-fetching on every visit (60s on the homepage, 1h on /music).
 - `next.config.ts` allow-lists `i.scdn.co` so `next/image` can optimise Spotify
   artwork.
+- The uni dashboard uses a single password instead of user accounts. If
+  `UNI_DASHBOARD_PASSWORD` is not set, the dashboard and API are open.

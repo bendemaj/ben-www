@@ -5,7 +5,7 @@ import { ThemeToggle } from "@/components/theme-toggle";
 import Link from "next/link";
 
 export const metadata: Metadata = {
-  metadataBase: new URL("https://your-domain.com"),
+  metadataBase: new URL("https://bendemaj.com"),
   title: "Ben — Developer",
   description: "Developer, builder, embedded systems & FPGA.",
   openGraph: {
@@ -35,6 +35,12 @@ export default function RootLayout({
                   className="hover:text-ink dark:hover:text-ink-dark"
                 >
                   Posts
+                </Link>
+                <Link
+                  href="/apps"
+                  className="hover:text-ink dark:hover:text-ink-dark"
+                >
+                  Apps
                 </Link>
               </nav>
               <ThemeToggle />

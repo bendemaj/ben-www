@@ -1,0 +1,14 @@
+{
+  "rewrites": [
+    {
+      "source": "/uni-dashboard",
+      "has": [
+        {
+          "type": "host",
+          "value": "apps.bendemaj.com"
+        }
+      ],
+      "destination": "/apps/uni-dashboard"
+    }
+  ]
+}
