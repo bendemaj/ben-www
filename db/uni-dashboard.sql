@@ -28,3 +28,16 @@ create trigger uni_courses_set_updated_at
 before update on uni_courses
 for each row
 execute function set_uni_courses_updated_at();
+
+create table if not exists tick_time_entries (
+  id text primary key,
+  tag text not null,
+  start_ms bigint not null,
+  end_ms bigint not null,
+  duration_seconds integer not null check (duration_seconds > 0),
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now()
+);
+
+create index if not exists tick_time_entries_start_ms_idx
+on tick_time_entries (start_ms desc);

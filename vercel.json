@@ -9,6 +9,16 @@
         }
       ],
       "destination": "/apps/uni-dashboard"
+    },
+    {
+      "source": "/tick",
+      "has": [
+        {
+          "type": "host",
+          "value": "apps.bendemaj.com"
+        }
+      ],
+      "destination": "/apps/tick"
     }
   ]
 }

@@ -19,6 +19,21 @@ export default function AppsPage() {
 
       <ul className="space-y-8">
         <li>
+          <Link href="/apps/tick" className="group block space-y-1">
+            <div className="flex items-baseline gap-4">
+              <span className="font-mono text-[15px] font-medium text-ink group-hover:underline dark:text-ink-dark">
+                tick
+              </span>
+              <span className="shrink-0 text-sm text-faint dark:text-faint-dark">
+                Time
+              </span>
+            </div>
+            <p className="text-[15px] leading-6 text-muted dark:text-muted-dark">
+              A small timer for tracking focused work sessions.
+            </p>
+          </Link>
+        </li>
+        <li>
           <Link href="/apps/uni-dashboard" className="group block space-y-1">
             <div className="flex items-baseline gap-4">
               <span className="text-[15px] font-medium text-ink group-hover:underline dark:text-ink-dark">

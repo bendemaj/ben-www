@@ -49,6 +49,8 @@ Scopes requested: `user-read-currently-playing`, `user-read-recently-played`,
 | --- | --- |
 | `app/page.tsx` | Homepage — intro prose + favorite writing + live "last listened to" line |
 | `app/music/page.tsx` | Top Artists + Top Tracks, numbered with artwork |
+| `app/apps/tick/page.tsx` | Monospace time tracker for focused work sessions |
+| `app/api/tick/time-entries/*` | Server-side tick API backed by Neon Postgres |
 | `app/apps/uni-dashboard/page.tsx` | Uni course tracker with ECTS, grade, semester, and exam views |
 | `app/api/uni/courses/*` | Server-side course API backed by Neon Postgres |
 | `lib/uni/*` | Uni course types, seed data, stats, and Neon data access |
@@ -83,9 +85,16 @@ Also add `UNI_DASHBOARD_PASSWORD` in Vercel for Production and any Preview
 environment you want protected. The app stores a 30-day HttpOnly session cookie
 after a successful unlock.
 
+Tick is available at `/apps/tick` and uses the same `DATABASE_URL`, creating a
+separate `tick_time_entries` table on first use. The running timer itself stays
+in browser storage so a refresh does not lose an active session. For protection,
+set `TICK_PASSWORD` or a shared `APPS_PASSWORD`; if neither is set, tick falls
+back to `UNI_DASHBOARD_PASSWORD`.
+
 The dashboard route is `/apps/uni-dashboard`. `vercel.json` also rewrites
-`apps.bendemaj.com/uni-dashboard` to that route when the `apps.bendemaj.com`
-domain is attached to the same Vercel project.
+`apps.bendemaj.com/uni-dashboard` and `apps.bendemaj.com/tick` to their app
+routes when the `apps.bendemaj.com` domain is attached to the same Vercel
+project.
 
 ## Notes
 
@@ -95,3 +104,5 @@ domain is attached to the same Vercel project.
   artwork.
 - The uni dashboard uses a single password instead of user accounts. If
   `UNI_DASHBOARD_PASSWORD` is not set, the dashboard and API are open.
+- Tick uses a single password too. If `TICK_PASSWORD`, `APPS_PASSWORD`, and
+  `UNI_DASHBOARD_PASSWORD` are all unset, tick and its API are open.
