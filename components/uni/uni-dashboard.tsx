@@ -1,14 +1,17 @@
 "use client";
 
-import { FormEvent, useEffect, useMemo, useState } from "react";
+import { FormEvent, useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
+import { ArrowDown, ArrowUp, ArrowUpDown, LockKeyhole } from "lucide-react";
 import {
-  compareSemesters,
+  sortCourses,
+  type CourseSortKey,
   getCourseStats,
   getGradeDistribution,
   getSemesters,
 } from "@/lib/uni/stats";
 import { GRADE_OPTIONS, type Course, type CourseFormValues } from "@/lib/uni/types";
+import { ExamCalendar } from "@/components/uni/exam-calendar";
 
 interface UniDashboardProps {
   initialCourses: Course[];
@@ -43,7 +46,11 @@ export function UniDashboard({ initialCourses, isProtected = false }: UniDashboa
   const [search, setSearch] = useState("");
   const [semester, setSemester] = useState("all");
   const [status, setStatus] = useState<"all" | Course["status"]>("all");
-  const [message, setMessage] = useState("Loading courses");
+  const [message, setMessage] = useState("");
+  const [view, setView] = useState<"courses" | "calendar">("courses");
+  const [sortKey, setSortKey] = useState<CourseSortKey>("semester");
+  const [sortDirection, setSortDirection] = useState<"asc" | "desc">("asc");
+  const formRef = useRef<HTMLFormElement>(null);
 
   useEffect(() => {
     let active = true;
@@ -62,7 +69,7 @@ export function UniDashboard({ initialCourses, isProtected = false }: UniDashboa
 
         setCourses(data.writable ? data.courses : localCourses ?? data.courses);
         setIsWritable(data.writable);
-        setMessage(data.writable ? "Synced with Neon" : "Local edits");
+        setMessage("");
       } catch (error) {
         if (!active) return;
 
@@ -101,7 +108,7 @@ export function UniDashboard({ initialCourses, isProtected = false }: UniDashboa
   const filteredCourses = useMemo(() => {
     const query = search.trim().toLowerCase();
 
-    return courses
+    return sortCourses(courses
       .filter((course) => {
         const matchesSearch =
           !query ||
@@ -112,9 +119,8 @@ export function UniDashboard({ initialCourses, isProtected = false }: UniDashboa
         const matchesStatus = status === "all" || course.status === status;
 
         return matchesSearch && matchesSemester && matchesStatus;
-      })
-      .sort((a, b) => compareSemesters(a.semester, b.semester) || a.name.localeCompare(b.name));
-  }, [courses, search, semester, status]);
+      }), sortKey, sortDirection);
+  }, [courses, search, semester, status, sortKey, sortDirection]);
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -143,10 +149,10 @@ export function UniDashboard({ initialCourses, isProtected = false }: UniDashboa
 
         const data = (await response.json()) as { course: Course };
         upsertCourse(data.course);
-        setMessage("Saved to Neon");
+        setMessage("");
       } else {
         upsertCourse(nextCourse);
-        setMessage("Saved locally");
+        setMessage("");
       }
 
       resetForm();
@@ -173,7 +179,7 @@ export function UniDashboard({ initialCourses, isProtected = false }: UniDashboa
       }
 
       setCourses((current) => current.filter((item) => item.id !== course.id));
-      setMessage(isWritable ? "Deleted from Neon" : "Deleted locally");
+      setMessage("");
 
       if (editingId === course.id) {
         resetForm();
@@ -199,6 +205,8 @@ export function UniDashboard({ initialCourses, isProtected = false }: UniDashboa
   }
 
   function startEditing(course: Course) {
+    formRef.current?.scrollIntoView({ behavior: "smooth", block: "nearest" });
+    formRef.current?.querySelector("input")?.focus({ preventScroll: true });
     setEditingId(course.id);
     setForm({
       name: course.name,
@@ -237,25 +245,32 @@ export function UniDashboard({ initialCourses, isProtected = false }: UniDashboa
             </div>
           </div>
           <div className="flex items-center gap-2 text-sm">
-            <span className="rounded border border-line px-2 py-1 text-faint dark:border-line-dark dark:text-faint-dark">
-              {isWritable ? "Neon" : "Local"}
+            <span role="status" className="whitespace-nowrap rounded border border-line px-2 py-1 text-faint dark:border-line-dark dark:text-faint-dark">
+              {!isLoaded ? "Loading" : isSaving ? "Saving" : message ? "Check status" : isWritable ? "Synced" : "Saved on device"}
             </span>
-            <span>{isLoaded ? message : "Loading"}</span>
             {isProtected ? (
               <button
                 type="button"
+                aria-label="Lock dashboard"
+                title="Lock dashboard"
                 onClick={() => void handleLogout()}
-                className="text-faint underline decoration-line underline-offset-4 hover:text-ink hover:decoration-current dark:text-faint-dark dark:decoration-line-dark dark:hover:text-ink-dark"
+                className="flex h-10 w-10 shrink-0 items-center justify-center rounded text-faint transition-colors hover:bg-line/50 hover:text-ink focus-visible:outline-2 dark:text-faint-dark dark:hover:bg-line-dark/50 dark:hover:text-ink-dark"
               >
-                Lock
+                <LockKeyhole size={17} aria-hidden="true" />
               </button>
             ) : null}
           </div>
         </div>
+        {message && isLoaded ? <p role="alert" className="text-sm text-faint dark:text-faint-dark">{message}</p> : null}
       </header>
 
       <section className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-        <Stat label="Completed ECTS" value={formatNumber(stats.completedCredits)} />
+        <Stat label="Completed ECTS" value={
+          <span className="inline-flex flex-wrap items-baseline gap-x-2">
+            <span>{formatNumber(stats.completedCredits)}</span>
+            <span className="text-faint dark:text-faint-dark">/ {formatNumber(stats.totalCredits)}</span>
+          </span>
+        } />
         <Stat label="Pending ECTS" value={formatNumber(stats.pendingCredits)} />
         <Stat
           label="Average Grade"
@@ -286,7 +301,18 @@ export function UniDashboard({ initialCourses, isProtected = false }: UniDashboa
       </section>
 
       <section className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_320px] lg:items-start">
-        <div className="space-y-4">
+        <div className="min-w-0 space-y-4">
+          <div className="flex items-center justify-between gap-3 border-b border-line dark:border-line-dark">
+            <div className="flex gap-5" aria-label="Dashboard view">
+              {(["courses", "calendar"] as const).map((item) => (
+                <button key={item} type="button" aria-pressed={view === item} onClick={() => setView(item)}
+                  className={`border-b-2 py-3 text-sm ${view === item ? "border-ink text-ink dark:border-ink-dark dark:text-ink-dark" : "border-transparent text-faint dark:text-faint-dark"}`}>
+                  {item === "courses" ? "Courses" : "Exam calendar"}
+                </button>
+              ))}
+            </div>
+            <span className="text-sm text-faint dark:text-faint-dark">{filteredCourses.length} courses</span>
+          </div>
           <div className="grid gap-3 border-b border-line pb-4 dark:border-line-dark sm:grid-cols-[minmax(0,1fr)_150px_130px]">
             <label className="space-y-1">
               <span className="block text-sm text-faint dark:text-faint-dark">Search</span>
@@ -326,14 +352,23 @@ export function UniDashboard({ initialCourses, isProtected = false }: UniDashboa
             </label>
           </div>
 
+          {view === "courses" ?
           <CourseList
             courses={filteredCourses}
             isSaving={isSaving}
             onEdit={startEditing}
+            sortKey={sortKey}
+            sortDirection={sortDirection}
+            onSort={(key) => {
+              setSortDirection(key === sortKey && sortDirection === "asc" ? "desc" : "asc");
+              setSortKey(key);
+            }}
           />
+          : <ExamCalendar courses={filteredCourses} isSaving={isSaving} onEdit={startEditing} />}
         </div>
 
         <form
+          ref={formRef}
           onSubmit={handleSubmit}
           className="space-y-4 border border-line p-4 dark:border-line-dark"
         >
@@ -473,10 +508,16 @@ function CourseList({
   courses,
   isSaving,
   onEdit,
+  sortKey,
+  sortDirection,
+  onSort,
 }: {
   courses: Course[];
   isSaving: boolean;
   onEdit: (course: Course) => void;
+  sortKey: CourseSortKey;
+  sortDirection: "asc" | "desc";
+  onSort: (key: CourseSortKey) => void;
 }) {
   if (courses.length === 0) {
     return (
@@ -488,16 +529,24 @@ function CourseList({
 
   return (
     <div className="overflow-hidden border border-line dark:border-line-dark">
-      <div className="hidden min-w-full overflow-x-auto md:block">
-        <table className="min-w-full text-left text-sm">
+      <div className="overflow-x-auto" role="region" aria-label="Courses" tabIndex={0}>
+        <table className="w-full min-w-[640px] text-left text-sm">
           <thead className="border-b border-line text-faint dark:border-line-dark dark:text-faint-dark">
             <tr>
-              <th className="px-3 py-3 font-medium">Course</th>
-              <th className="px-3 py-3 font-medium">Semester</th>
-              <th className="px-3 py-3 text-right font-medium">ECTS</th>
-              <th className="px-3 py-3 font-medium">Status</th>
-              <th className="px-3 py-3 font-medium">Grade</th>
-              <th className="px-3 py-3 font-medium">Exam</th>
+              {courseColumns.map(({ key, label }) => {
+                const active = sortKey === key;
+                const Icon = active ? sortDirection === "asc" ? ArrowUp : ArrowDown : ArrowUpDown;
+                const nextOrder = active && sortDirection === "asc" ? "descending" : "ascending";
+                return (
+                  <th key={key} scope="col" aria-sort={active ? sortDirection === "asc" ? "ascending" : "descending" : "none"} className="font-medium">
+                    <button type="button" onClick={() => onSort(key)} title={`Sort by ${label.toLowerCase()}, ${nextOrder}`}
+                      aria-label={`Sort by ${label.toLowerCase()}, ${nextOrder}`}
+                      className={`flex min-h-11 w-full items-center gap-1 whitespace-nowrap px-3 py-3 text-left transition-colors hover:text-ink focus-visible:outline-2 focus-visible:outline-offset-[-2px] dark:hover:text-ink-dark ${key === "credits" ? "justify-end" : ""} ${active ? "text-ink dark:text-ink-dark" : ""}`}>
+                      {label}<Icon size={14} className={`shrink-0 ${active ? "" : "opacity-40"}`} aria-hidden="true" />
+                    </button>
+                  </th>
+                );
+              })}
             </tr>
           </thead>
           <tbody>
@@ -506,7 +555,7 @@ function CourseList({
                 key={course.id}
                 className="border-b border-line last:border-b-0 dark:border-line-dark"
               >
-                <td className="max-w-[360px] px-3 py-3">
+                <td className="min-w-[180px] max-w-[360px] px-3 py-3">
                   <button
                     type="button"
                     disabled={isSaving}
@@ -534,36 +583,18 @@ function CourseList({
         </table>
       </div>
 
-      <ul className="divide-y divide-line dark:divide-line-dark md:hidden">
-        {courses.map((course) => (
-          <li key={course.id} className="space-y-3 p-4">
-            <div className="flex items-start justify-between gap-4">
-              <div>
-                <button
-                  type="button"
-                  disabled={isSaving}
-                  onClick={() => onEdit(course)}
-                  className="text-left font-medium text-ink underline decoration-line underline-offset-4 transition-colors hover:decoration-current disabled:opacity-50 dark:text-ink-dark dark:decoration-line-dark"
-                >
-                  {course.name}
-                </button>
-                <p className="mt-1 text-sm text-faint dark:text-faint-dark">
-                  {course.semester} · {formatNumber(course.credits)} ECTS
-                </p>
-              </div>
-              <StatusBadge status={course.status} />
-            </div>
-            <div className="grid grid-cols-2 gap-2 text-sm">
-              <Meta label="Grade" value={displayValue(course.grade)} />
-              <Meta label="Exam" value={displayValue(course.examDate)} />
-              <Meta label="Examiner" value={displayValue(course.examiner)} wide />
-            </div>
-          </li>
-        ))}
-      </ul>
     </div>
   );
 }
+
+const courseColumns: { key: CourseSortKey; label: string }[] = [
+  { key: "name", label: "Course" },
+  { key: "semester", label: "Semester" },
+  { key: "credits", label: "ECTS" },
+  { key: "status", label: "Status" },
+  { key: "grade", label: "Grade" },
+  { key: "examDate", label: "Exam" },
+];
 
 function SemesterList({ semesters, courses }: { semesters: string[]; courses: Course[] }) {
   const latest = semesters.at(-1);
@@ -629,7 +660,7 @@ function GradeDistribution({
   );
 }
 
-function Stat({ label, value }: { label: string; value: string }) {
+function Stat({ label, value }: { label: string; value: React.ReactNode }) {
   return (
     <div className="border border-line px-4 py-3 dark:border-line-dark">
       <p className="text-sm text-faint dark:text-faint-dark">{label}</p>
@@ -644,15 +675,6 @@ function Field({ label, children }: { label: string; children: React.ReactNode }
       <span className="block text-sm text-faint dark:text-faint-dark">{label}</span>
       {children}
     </label>
-  );
-}
-
-function Meta({ label, value, wide = false }: { label: string; value: string; wide?: boolean }) {
-  return (
-    <p className={wide ? "col-span-2" : ""}>
-      <span className="block text-xs text-faint dark:text-faint-dark">{label}</span>
-      <span className="text-ink dark:text-ink-dark">{value}</span>
-    </p>
   );
 }
 
