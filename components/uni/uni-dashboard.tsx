@@ -2,7 +2,7 @@
 
 import { FormEvent, useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
-import { ArrowDown, ArrowUp, ArrowUpDown, LockKeyhole } from "lucide-react";
+import { ArrowDown, ArrowUp, ArrowUpDown, ChevronDown, LockKeyhole, Plus, X } from "lucide-react";
 import {
   sortCourses,
   type CourseSortKey,
@@ -50,6 +50,8 @@ export function UniDashboard({ initialCourses, isProtected = false }: UniDashboa
   const [view, setView] = useState<"courses" | "calendar">("courses");
   const [sortKey, setSortKey] = useState<CourseSortKey>("semester");
   const [sortDirection, setSortDirection] = useState<"asc" | "desc">("asc");
+  const [isEditorOpen, setIsEditorOpen] = useState(false);
+  const [showProgress, setShowProgress] = useState(false);
   const formRef = useRef<HTMLFormElement>(null);
 
   useEffect(() => {
@@ -205,8 +207,7 @@ export function UniDashboard({ initialCourses, isProtected = false }: UniDashboa
   }
 
   function startEditing(course: Course) {
-    formRef.current?.scrollIntoView({ behavior: "smooth", block: "nearest" });
-    formRef.current?.querySelector("input")?.focus({ preventScroll: true });
+    revealEditor();
     setEditingId(course.id);
     setForm({
       name: course.name,
@@ -222,10 +223,19 @@ export function UniDashboard({ initialCourses, isProtected = false }: UniDashboa
   function resetForm() {
     setEditingId(null);
     setForm(emptyForm);
+    setIsEditorOpen(false);
+  }
+
+  function revealEditor() {
+    setIsEditorOpen(true);
+    window.requestAnimationFrame(() => {
+      formRef.current?.scrollIntoView({ block: "nearest" });
+      formRef.current?.querySelector("input")?.focus({ preventScroll: true });
+    });
   }
 
   return (
-    <div className="app-wide relative left-1/2 w-[calc(100vw-2rem)] max-w-5xl -translate-x-1/2 space-y-8 text-[15px] text-muted dark:text-muted-dark sm:w-[calc(100vw-3rem)]">
+    <div className="app-wide relative left-1/2 w-[calc(100vw-2rem)] max-w-5xl -translate-x-1/2 space-y-5 text-base text-muted dark:text-muted-dark sm:w-[calc(100vw-3rem)] sm:space-y-8 sm:text-[15px]">
       <header className="space-y-4">
         <div className="flex flex-col gap-3 border-b border-line pb-5 dark:border-line-dark sm:flex-row sm:items-end sm:justify-between">
           <div className="space-y-2">
@@ -239,7 +249,7 @@ export function UniDashboard({ initialCourses, isProtected = false }: UniDashboa
               <h1 className="text-2xl font-semibold tracking-tight text-ink dark:text-ink-dark">
                 Uni Dashboard
               </h1>
-              <p className="mt-1 max-w-2xl leading-6">
+              <p className="mt-1 hidden max-w-2xl leading-6 sm:block">
                 Courses, grades, exams, and ECTS progress in one place.
               </p>
             </div>
@@ -254,7 +264,7 @@ export function UniDashboard({ initialCourses, isProtected = false }: UniDashboa
                 aria-label="Lock dashboard"
                 title="Lock dashboard"
                 onClick={() => void handleLogout()}
-                className="flex h-10 w-10 shrink-0 items-center justify-center rounded text-faint transition-colors hover:bg-line/50 hover:text-ink focus-visible:outline-2 dark:text-faint-dark dark:hover:bg-line-dark/50 dark:hover:text-ink-dark"
+                className="flex h-11 w-11 shrink-0 items-center justify-center rounded text-faint transition-colors hover:bg-line/50 hover:text-ink focus-visible:outline-2 dark:text-faint-dark dark:hover:bg-line-dark/50 dark:hover:text-ink-dark"
               >
                 <LockKeyhole size={17} aria-hidden="true" />
               </button>
@@ -264,9 +274,9 @@ export function UniDashboard({ initialCourses, isProtected = false }: UniDashboa
         {message && isLoaded ? <p role="alert" className="text-sm text-faint dark:text-faint-dark">{message}</p> : null}
       </header>
 
-      <section className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+      <section className="grid grid-cols-2 gap-2 sm:gap-3 lg:grid-cols-4">
         <Stat label="Completed ECTS" value={
-          <span className="inline-flex flex-wrap items-baseline gap-x-2">
+          <span className="inline-flex flex-wrap items-baseline gap-x-1.5 sm:gap-x-2">
             <span>{formatNumber(stats.completedCredits)}</span>
             <span className="text-faint dark:text-faint-dark">/ {formatNumber(stats.totalCredits)}</span>
           </span>
@@ -294,7 +304,12 @@ export function UniDashboard({ initialCourses, isProtected = false }: UniDashboa
             style={{ width: `${completedPercent}%` }}
           />
         </div>
-        <div className="grid gap-3 sm:grid-cols-2">
+        <button type="button" aria-expanded={showProgress} aria-controls="progress-breakdown" onClick={() => setShowProgress(!showProgress)}
+          className="flex min-h-11 w-full items-center justify-between text-sm text-ink dark:text-ink-dark sm:hidden">
+          Semesters and grades
+          <ChevronDown size={16} className={showProgress ? "rotate-180" : ""} aria-hidden="true" />
+        </button>
+        <div id="progress-breakdown" className={`${showProgress ? "grid" : "hidden"} gap-5 sm:grid sm:grid-cols-2 sm:gap-3`}>
           <SemesterList semesters={semesters} courses={courses} />
           <GradeDistribution data={gradeDistribution} />
         </div>
@@ -302,7 +317,7 @@ export function UniDashboard({ initialCourses, isProtected = false }: UniDashboa
 
       <section className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_320px] lg:items-start">
         <div className="min-w-0 space-y-4">
-          <div className="flex items-center justify-between gap-3 border-b border-line dark:border-line-dark">
+          <div className="flex flex-wrap items-center justify-between gap-x-3 border-b border-line dark:border-line-dark">
             <div className="flex gap-5" aria-label="Dashboard view">
               {(["courses", "calendar"] as const).map((item) => (
                 <button key={item} type="button" aria-pressed={view === item} onClick={() => setView(item)}
@@ -313,22 +328,22 @@ export function UniDashboard({ initialCourses, isProtected = false }: UniDashboa
             </div>
             <span className="text-sm text-faint dark:text-faint-dark">{filteredCourses.length} courses</span>
           </div>
-          <div className="grid gap-3 border-b border-line pb-4 dark:border-line-dark sm:grid-cols-[minmax(0,1fr)_150px_130px]">
-            <label className="space-y-1">
+          <div className="grid grid-cols-2 gap-3 border-b border-line pb-4 dark:border-line-dark sm:grid-cols-[minmax(0,1fr)_150px_130px]">
+            <label className="col-span-2 min-w-0 space-y-1 sm:col-span-1">
               <span className="block text-sm text-faint dark:text-faint-dark">Search</span>
               <input
                 value={search}
                 onChange={(event) => setSearch(event.target.value)}
-                className="h-10 w-full rounded border border-line bg-paper px-3 text-ink outline-none transition-colors focus:border-ink dark:border-line-dark dark:bg-paper-dark dark:text-ink-dark dark:focus:border-ink-dark"
+                className={fieldClass}
                 placeholder="Course, semester, examiner"
               />
             </label>
-            <label className="space-y-1">
+            <label className="min-w-0 space-y-1">
               <span className="block text-sm text-faint dark:text-faint-dark">Semester</span>
               <select
                 value={semester}
                 onChange={(event) => setSemester(event.target.value)}
-                className="h-10 w-full rounded border border-line bg-paper px-3 text-ink outline-none focus:border-ink dark:border-line-dark dark:bg-paper-dark dark:text-ink-dark dark:focus:border-ink-dark"
+                className={fieldClass}
               >
                 <option value="all">All</option>
                 {semesters.map((item) => (
@@ -338,12 +353,12 @@ export function UniDashboard({ initialCourses, isProtected = false }: UniDashboa
                 ))}
               </select>
             </label>
-            <label className="space-y-1">
+            <label className="min-w-0 space-y-1">
               <span className="block text-sm text-faint dark:text-faint-dark">Status</span>
               <select
                 value={status}
                 onChange={(event) => setStatus(event.target.value as "all" | Course["status"])}
-                className="h-10 w-full rounded border border-line bg-paper px-3 text-ink outline-none focus:border-ink dark:border-line-dark dark:bg-paper-dark dark:text-ink-dark dark:focus:border-ink-dark"
+                className={fieldClass}
               >
                 <option value="all">All</option>
                 <option value="done">Done</option>
@@ -367,12 +382,20 @@ export function UniDashboard({ initialCourses, isProtected = false }: UniDashboa
           : <ExamCalendar courses={filteredCourses} isSaving={isSaving} onEdit={startEditing} />}
         </div>
 
-        <form
+        <div className="order-first min-w-0 lg:order-none">
+          <button type="button" aria-expanded={isEditorOpen} aria-controls="course-editor" disabled={isSaving}
+            onClick={() => isEditorOpen ? setIsEditorOpen(false) : revealEditor()}
+            className="flex min-h-11 w-full items-center justify-between gap-2 border-b border-line text-sm text-ink disabled:opacity-50 dark:border-line-dark dark:text-ink-dark lg:hidden">
+            {editingId ? "Edit course" : "Add course"}
+            {isEditorOpen ? <X size={18} aria-hidden="true" /> : <Plus size={18} aria-hidden="true" />}
+          </button>
+          <form
+          id="course-editor"
           ref={formRef}
           onSubmit={handleSubmit}
-          className="space-y-4 border border-line p-4 dark:border-line-dark"
+          className={`${isEditorOpen ? "block" : "hidden"} min-w-0 scroll-mt-4 space-y-4 border border-line p-3 dark:border-line-dark sm:p-4 lg:block`}
         >
-          <div>
+          <div className="hidden lg:block">
             <h2 className="font-medium text-ink dark:text-ink-dark">
               {editingId ? "Edit Course" : "Add Course"}
             </h2>
@@ -414,7 +437,7 @@ export function UniDashboard({ initialCourses, isProtected = false }: UniDashboa
             </Field>
           </div>
 
-          <div className="grid grid-cols-2 gap-3">
+          <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-1">
             <Field label="Status">
               <select
                 value={form.status}
@@ -460,11 +483,11 @@ export function UniDashboard({ initialCourses, isProtected = false }: UniDashboa
             />
           </Field>
 
-          <div className="flex gap-2 pt-1">
+          <div className="flex flex-wrap gap-2 pt-1">
             <button
               type="submit"
               disabled={isSaving}
-              className="h-10 flex-1 rounded bg-ink px-3 text-sm font-medium text-paper transition-opacity disabled:opacity-50 dark:bg-ink-dark dark:text-paper-dark"
+              className="h-11 min-w-20 flex-1 rounded bg-ink px-3 text-sm font-medium text-paper transition-opacity disabled:opacity-50 dark:bg-ink-dark dark:text-paper-dark"
             >
               {isSaving ? "Saving" : editingId ? "Save" : "Add"}
             </button>
@@ -473,7 +496,8 @@ export function UniDashboard({ initialCourses, isProtected = false }: UniDashboa
                 <button
                   type="button"
                   onClick={resetForm}
-                  className="h-10 rounded border border-line px-3 text-sm text-ink dark:border-line-dark dark:text-ink-dark"
+                  disabled={isSaving}
+                  className="h-11 rounded border border-line px-3 text-sm text-ink disabled:opacity-50 dark:border-line-dark dark:text-ink-dark"
                 >
                   Cancel
                 </button>
@@ -483,7 +507,7 @@ export function UniDashboard({ initialCourses, isProtected = false }: UniDashboa
                   onClick={() => {
                     if (editingCourse) void handleDelete(editingCourse);
                   }}
-                  className="h-10 rounded border border-line px-3 text-sm text-faint disabled:opacity-50 dark:border-line-dark dark:text-faint-dark"
+                  className="h-11 rounded border border-line px-3 text-sm text-faint disabled:opacity-50 dark:border-line-dark dark:text-faint-dark"
                 >
                   Delete
                 </button>
@@ -491,6 +515,7 @@ export function UniDashboard({ initialCourses, isProtected = false }: UniDashboa
             ) : null}
           </div>
         </form>
+        </div>
       </section>
     </div>
   );
@@ -529,54 +554,64 @@ function CourseList({
 
   return (
     <div className="overflow-hidden border border-line dark:border-line-dark">
-      <div className="overflow-x-auto" role="region" aria-label="Courses" tabIndex={0}>
-        <table className="w-full min-w-[640px] text-left text-sm">
-          <thead className="border-b border-line text-faint dark:border-line-dark dark:text-faint-dark">
-            <tr>
+      <div className="md:overflow-x-auto" role="region" aria-label="Courses" tabIndex={0}>
+        <table role="table" className="block w-full text-left text-sm md:table md:min-w-[640px]">
+          <thead role="rowgroup" className="block border-b border-line text-faint dark:border-line-dark dark:text-faint-dark md:table-header-group">
+            <tr role="row" className="grid grid-cols-3 md:table-row">
               {courseColumns.map(({ key, label }) => {
                 const active = sortKey === key;
                 const Icon = active ? sortDirection === "asc" ? ArrowUp : ArrowDown : ArrowUpDown;
                 const nextOrder = active && sortDirection === "asc" ? "descending" : "ascending";
                 return (
-                  <th key={key} scope="col" aria-sort={active ? sortDirection === "asc" ? "ascending" : "descending" : "none"} className="font-medium">
+                  <th role="columnheader" key={key} scope="col" aria-sort={active ? sortDirection === "asc" ? "ascending" : "descending" : "none"} className="min-w-0 font-medium">
                     <button type="button" onClick={() => onSort(key)} title={`Sort by ${label.toLowerCase()}, ${nextOrder}`}
                       aria-label={`Sort by ${label.toLowerCase()}, ${nextOrder}`}
-                      className={`flex min-h-11 w-full items-center gap-1 whitespace-nowrap px-3 py-3 text-left transition-colors hover:text-ink focus-visible:outline-2 focus-visible:outline-offset-[-2px] dark:hover:text-ink-dark ${key === "credits" ? "justify-end" : ""} ${active ? "text-ink dark:text-ink-dark" : ""}`}>
-                      {label}<Icon size={14} className={`shrink-0 ${active ? "" : "opacity-40"}`} aria-hidden="true" />
+                      className={`flex min-h-11 w-full items-center gap-1 px-2 py-3 text-left transition-colors hover:text-ink focus-visible:outline-2 focus-visible:outline-offset-[-2px] dark:hover:text-ink-dark md:whitespace-nowrap md:px-3 ${key === "credits" ? "md:justify-end" : ""} ${active ? "text-ink dark:text-ink-dark" : ""}`}>
+                      <span className="min-w-0 [overflow-wrap:anywhere]">{label}</span><Icon size={14} className={`shrink-0 ${active ? "" : "opacity-40"}`} aria-hidden="true" />
                     </button>
                   </th>
                 );
               })}
             </tr>
           </thead>
-          <tbody>
+          <tbody role="rowgroup" className="block md:table-row-group">
             {courses.map((course) => (
               <tr
+                role="row"
                 key={course.id}
-                className="border-b border-line last:border-b-0 dark:border-line-dark"
+                className="grid grid-cols-3 gap-x-3 gap-y-3 border-b border-line p-3 last:border-b-0 dark:border-line-dark md:table-row md:p-0"
               >
-                <td className="min-w-[180px] max-w-[360px] px-3 py-3">
+                <td role="cell" className="col-span-3 min-w-0 md:min-w-[180px] md:max-w-[360px] md:px-3 md:py-3">
                   <button
                     type="button"
                     disabled={isSaving}
                     onClick={() => onEdit(course)}
-                    className="text-left text-ink underline decoration-line underline-offset-4 transition-colors hover:decoration-current disabled:opacity-50 dark:text-ink-dark dark:decoration-line-dark"
+                    className="min-h-11 w-full text-left text-base leading-6 text-ink underline decoration-line underline-offset-4 transition-colors [overflow-wrap:anywhere] hover:decoration-current disabled:opacity-50 dark:text-ink-dark dark:decoration-line-dark md:min-h-0 md:text-sm md:leading-normal"
                   >
                     {course.name}
                   </button>
                   {course.examiner ? (
-                    <span className="mt-1 block truncate text-xs text-faint dark:text-faint-dark">
+                    <span className="mt-1 block text-xs text-faint [overflow-wrap:anywhere] dark:text-faint-dark">
                       {course.examiner}
                     </span>
                   ) : null}
                 </td>
-                <td className="px-3 py-3 font-mono">{course.semester}</td>
-                <td className="px-3 py-3 text-right font-mono">{formatNumber(course.credits)}</td>
-                <td className="px-3 py-3">
+                <td role="cell" className="min-w-0 font-mono [overflow-wrap:anywhere] md:px-3 md:py-3">
+                  <MobileColumnLabel>Semester</MobileColumnLabel>{course.semester}
+                </td>
+                <td role="cell" className="min-w-0 font-mono md:px-3 md:py-3 md:text-right">
+                  <MobileColumnLabel>ECTS</MobileColumnLabel>{formatNumber(course.credits)}
+                </td>
+                <td role="cell" className="min-w-0 md:px-3 md:py-3">
+                  <MobileColumnLabel>Status</MobileColumnLabel>
                   <StatusBadge status={course.status} />
                 </td>
-                <td className="px-3 py-3">{displayValue(course.grade)}</td>
-                <td className="px-3 py-3">{displayValue(course.examDate)}</td>
+                <td role="cell" className="col-span-2 min-w-0 [overflow-wrap:anywhere] md:px-3 md:py-3">
+                  <MobileColumnLabel>Grade</MobileColumnLabel>{displayValue(course.grade)}
+                </td>
+                <td role="cell" className="min-w-0 [overflow-wrap:anywhere] md:px-3 md:py-3">
+                  <MobileColumnLabel>Exam</MobileColumnLabel>{displayValue(course.examDate)}
+                </td>
               </tr>
             ))}
           </tbody>
@@ -585,6 +620,10 @@ function CourseList({
 
     </div>
   );
+}
+
+function MobileColumnLabel({ children }: { children: React.ReactNode }) {
+  return <span aria-hidden="true" className="mb-1 block font-serif text-xs text-faint dark:text-faint-dark md:hidden">{children}</span>;
 }
 
 const courseColumns: { key: CourseSortKey; label: string }[] = [
@@ -662,16 +701,16 @@ function GradeDistribution({
 
 function Stat({ label, value }: { label: string; value: React.ReactNode }) {
   return (
-    <div className="border border-line px-4 py-3 dark:border-line-dark">
+    <div className="min-w-0 border border-line px-3 py-3 dark:border-line-dark sm:px-4">
       <p className="text-sm text-faint dark:text-faint-dark">{label}</p>
-      <p className="mt-2 font-mono text-xl text-ink dark:text-ink-dark">{value}</p>
+      <p className="mt-2 font-mono text-lg text-ink dark:text-ink-dark sm:text-xl">{value}</p>
     </div>
   );
 }
 
 function Field({ label, children }: { label: string; children: React.ReactNode }) {
   return (
-    <label className="block space-y-1">
+    <label className="block min-w-0 space-y-1">
       <span className="block text-sm text-faint dark:text-faint-dark">{label}</span>
       {children}
     </label>
@@ -737,4 +776,4 @@ function displayValue(value: string | null) {
 }
 
 const fieldClass =
-  "h-10 w-full rounded border border-line bg-paper px-3 text-ink outline-none transition-colors focus:border-ink disabled:cursor-not-allowed disabled:opacity-50 dark:border-line-dark dark:bg-paper-dark dark:text-ink-dark dark:focus:border-ink-dark";
+  "h-11 min-w-0 w-full rounded border border-line bg-paper px-3 text-base text-ink outline-none transition-colors focus:border-ink disabled:cursor-not-allowed disabled:opacity-50 dark:border-line-dark dark:bg-paper-dark dark:text-ink-dark dark:focus:border-ink-dark sm:text-[15px]";

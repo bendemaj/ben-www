@@ -45,16 +45,16 @@ export function ExamCalendar({ courses, isSaving, onEdit }: {
   return (
     <div className="space-y-4">
       <div className="flex flex-wrap items-center justify-between gap-3">
-        <div className="flex min-w-0 items-center gap-1">
+        <div className="grid w-full min-w-0 grid-cols-[44px_minmax(0,1fr)_minmax(0,1fr)_44px] items-center gap-1 sm:flex sm:w-auto">
           <button type="button" aria-label="Previous month" title="Previous month" onClick={() => moveMonth(-1)} className={navigationClass}>
             <ChevronLeft size={18} aria-hidden="true" />
           </button>
-          <select aria-label="Exam month" value={monthNumber} onChange={(event) => changeMonth(monthKey(new Date(year, Number(event.target.value) - 1, 1)))} className={`${selectClass} w-24`}>
+          <select aria-label="Exam month" value={monthNumber} onChange={(event) => changeMonth(monthKey(new Date(year, Number(event.target.value) - 1, 1)))} className={`${selectClass} w-full sm:w-24`}>
             {Array.from({ length: 12 }, (_, index) => (
               <option key={index} value={index + 1}>{new Date(2026, index, 1).toLocaleDateString("en-GB", { month: "short" })}</option>
             ))}
           </select>
-          <select aria-label="Exam year" value={year} onChange={(event) => changeMonth(monthKey(new Date(Number(event.target.value), monthNumber - 1, 1)))} className={`${selectClass} w-20`}>
+          <select aria-label="Exam year" value={year} onChange={(event) => changeMonth(monthKey(new Date(Number(event.target.value), monthNumber - 1, 1)))} className={`${selectClass} w-full sm:w-20`}>
             {Array.from({ length: lastYear - firstYear + 1 }, (_, index) => firstYear + index).map((item) => <option key={item} value={item}>{item}</option>)}
           </select>
           <button type="button" aria-label="Next month" title="Next month" onClick={() => moveMonth(1)} className={navigationClass}>
@@ -62,7 +62,7 @@ export function ExamCalendar({ courses, isSaving, onEdit }: {
           </button>
         </div>
         <button type="button" onClick={() => changeMonth(monthKey(today))}
-          className="h-10 text-sm text-ink underline underline-offset-4 dark:text-ink-dark">Today</button>
+          className="ml-auto min-h-11 px-2 text-sm text-ink underline underline-offset-4 dark:text-ink-dark">Today</button>
       </div>
       <h3 aria-live="polite" className="font-medium text-ink dark:text-ink-dark">
         {first.toLocaleDateString("en-GB", { month: "long", year: "numeric" })}
@@ -81,7 +81,7 @@ export function ExamCalendar({ courses, isSaving, onEdit }: {
             <button key={index} type="button" aria-pressed={selectedDay === day}
               aria-label={`${day} ${first.toLocaleDateString("en-GB", { month: "long", year: "numeric" })}, ${dayExams.length} exams`}
               onClick={() => setSelectedDay(selectedDay === day ? null : day)}
-              className={`flex h-16 min-w-0 flex-col items-center justify-center gap-1 text-sm focus-visible:outline-2 focus-visible:outline-offset-[-2px] sm:h-20 ${selectedDay === day ? "bg-ink text-paper dark:bg-ink-dark dark:text-paper-dark" : "bg-paper text-ink hover:bg-line/50 dark:bg-paper-dark dark:text-ink-dark dark:hover:bg-line-dark/50"}`}>
+              className={`flex h-12 min-w-0 flex-col items-center justify-center gap-1 text-sm focus-visible:outline-2 focus-visible:outline-offset-[-2px] min-[400px]:h-14 sm:h-20 ${selectedDay === day ? "bg-ink text-paper dark:bg-ink-dark dark:text-paper-dark" : "bg-paper text-ink hover:bg-line/50 dark:bg-paper-dark dark:text-ink-dark dark:hover:bg-line-dark/50"}`}>
               <span className={`font-mono ${isToday ? "underline underline-offset-4" : ""}`}>{day}</span>
               <span className="flex h-3 items-center gap-1" aria-hidden="true">
                 {dayExams.slice(0, 3).map(({ course }) => (
@@ -89,12 +89,12 @@ export function ExamCalendar({ courses, isSaving, onEdit }: {
                 ))}
               </span>
             </button>
-          ) : <div key={index} className="h-16 bg-paper/60 dark:bg-paper-dark/60 sm:h-20" />;
+          ) : <div key={index} className="h-12 bg-paper/60 dark:bg-paper-dark/60 min-[400px]:h-14 sm:h-20" />;
         })}
       </div>
       <div className="flex flex-wrap items-center justify-between gap-2 text-sm text-faint dark:text-faint-dark">
         <span>{selectedDay === null ? "Exams this month" : `Exams on ${selectedDay} ${first.toLocaleDateString("en-GB", { month: "short" })}`}</span>
-        {selectedDay !== null && <button type="button" onClick={() => setSelectedDay(null)} className="underline underline-offset-4">All days</button>}
+        {selectedDay !== null && <button type="button" onClick={() => setSelectedDay(null)} className="min-h-11 underline underline-offset-4">All days</button>}
       </div>
       {visibleExams.length ? (
         <ul className="divide-y divide-line border-y border-line dark:divide-line-dark dark:border-line-dark">
@@ -105,7 +105,7 @@ export function ExamCalendar({ courses, isSaving, onEdit }: {
               </time>
               <div className="min-w-0">
                 <button type="button" disabled={isSaving} onClick={() => onEdit(course)}
-                  className="break-words text-left text-sm text-ink underline decoration-line underline-offset-4 disabled:opacity-50 dark:text-ink-dark dark:decoration-line-dark">{course.name}</button>
+                  className="min-h-11 text-left text-base text-ink underline decoration-line underline-offset-4 [overflow-wrap:anywhere] disabled:opacity-50 dark:text-ink-dark dark:decoration-line-dark sm:min-h-0 sm:text-sm">{course.name}</button>
                 <p className="mt-1 text-sm text-faint dark:text-faint-dark">
                   {course.status === "done" ? "Done" : "Pending"} · {course.credits} ECTS · {course.grade || "-"}
                 </p>
@@ -120,4 +120,4 @@ export function ExamCalendar({ courses, isSaving, onEdit }: {
 }
 
 const navigationClass = "flex h-11 w-11 shrink-0 items-center justify-center rounded text-ink transition-colors hover:bg-line/50 focus-visible:outline-2 dark:text-ink-dark dark:hover:bg-line-dark/50";
-const selectClass = "h-11 min-w-0 rounded border border-line bg-paper px-2 text-sm text-ink focus-visible:outline-2 dark:border-line-dark dark:bg-paper-dark dark:text-ink-dark";
+const selectClass = "h-11 min-w-0 rounded border border-line bg-paper px-2 text-base text-ink focus-visible:outline-2 dark:border-line-dark dark:bg-paper-dark dark:text-ink-dark sm:text-sm";

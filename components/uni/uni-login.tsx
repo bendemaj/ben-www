@@ -64,7 +64,8 @@ export function UniLogin() {
             type="password"
             value={password}
             onChange={(event) => setPassword(event.target.value)}
-            className="h-10 w-full rounded border border-line bg-paper px-3 text-ink outline-none transition-colors focus:border-ink dark:border-line-dark dark:bg-paper-dark dark:text-ink-dark dark:focus:border-ink-dark"
+            autoComplete="current-password"
+            className="h-11 min-w-0 w-full rounded border border-line bg-paper px-3 text-base text-ink outline-none transition-colors focus:border-ink dark:border-line-dark dark:bg-paper-dark dark:text-ink-dark dark:focus:border-ink-dark"
           />
         </label>
 
@@ -75,7 +76,7 @@ export function UniLogin() {
         <button
           type="submit"
           disabled={isSubmitting}
-          className="h-10 w-full rounded bg-ink px-3 text-sm font-medium text-paper transition-opacity disabled:opacity-50 dark:bg-ink-dark dark:text-paper-dark"
+          className="h-11 w-full rounded bg-ink px-3 text-sm font-medium text-paper transition-opacity disabled:opacity-50 dark:bg-ink-dark dark:text-paper-dark"
         >
           {isSubmitting ? "Unlocking" : "Unlock"}
         </button>
