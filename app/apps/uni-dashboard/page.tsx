@@ -4,7 +4,6 @@ import {
   hasUniDashboardSession,
   isUniDashboardPasswordConfigured,
 } from "@/lib/uni/auth";
-import { seedCourses } from "@/lib/uni/seed";
 
 export const dynamic = "force-dynamic";
 
@@ -21,5 +20,5 @@ export default async function UniDashboardPage() {
     return <UniLogin />;
   }
 
-  return <UniDashboard initialCourses={seedCourses} isProtected={isProtected} />;
+  return <UniDashboard isProtected={isProtected} />;
 }

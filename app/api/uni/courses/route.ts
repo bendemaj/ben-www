@@ -6,7 +6,6 @@ import {
   parseCourseInput,
   saveUniCourse,
 } from "@/lib/uni/db";
-import { seedCourses } from "@/lib/uni/seed";
 
 export const dynamic = "force-dynamic";
 
@@ -17,9 +16,9 @@ export async function GET() {
 
   if (!isUniDatabaseConfigured()) {
     return NextResponse.json({
-      courses: seedCourses,
+      courses: [],
       writable: false,
-      source: "seed",
+      source: "local",
     });
   }
 

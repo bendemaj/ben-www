@@ -12,16 +12,16 @@ import {
 } from "@/lib/uni/stats";
 import { GRADE_OPTIONS, type Course, type CourseFormValues } from "@/lib/uni/types";
 import { ExamCalendar } from "@/components/uni/exam-calendar";
+import { UniDashboardSkeleton } from "@/components/uni/uni-dashboard-skeleton";
 
 interface UniDashboardProps {
-  initialCourses: Course[];
   isProtected?: boolean;
 }
 
 interface CoursesResponse {
   courses: Course[];
   writable: boolean;
-  source: "neon" | "seed";
+  source: "neon" | "local";
 }
 
 const LOCAL_STORAGE_KEY = "bend-uni-dashboard-courses";
@@ -36,9 +36,11 @@ const emptyForm: CourseFormValues = {
   examiner: "",
 };
 
-export function UniDashboard({ initialCourses, isProtected = false }: UniDashboardProps) {
-  const [courses, setCourses] = useState(initialCourses);
+export function UniDashboard({ isProtected = false }: UniDashboardProps) {
+  const [courses, setCourses] = useState<Course[]>([]);
   const [isLoaded, setIsLoaded] = useState(false);
+  const [loadError, setLoadError] = useState("");
+  const [loadAttempt, setLoadAttempt] = useState(0);
   const [isWritable, setIsWritable] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const [form, setForm] = useState<CourseFormValues>(emptyForm);
@@ -69,15 +71,13 @@ export function UniDashboard({ initialCourses, isProtected = false }: UniDashboa
 
         if (!active) return;
 
-        setCourses(data.writable ? data.courses : localCourses ?? data.courses);
+        setCourses(data.writable ? data.courses : localCourses ?? []);
         setIsWritable(data.writable);
         setMessage("");
       } catch (error) {
         if (!active) return;
 
-        setCourses(readLocalCourses() ?? initialCourses);
-        setIsWritable(false);
-        setMessage(error instanceof Error ? error.message : "Using local courses");
+        setLoadError(error instanceof Error ? error.message : "Courses could not be loaded.");
       } finally {
         if (active) {
           setIsLoaded(true);
@@ -90,12 +90,12 @@ export function UniDashboard({ initialCourses, isProtected = false }: UniDashboa
     return () => {
       active = false;
     };
-  }, [initialCourses]);
+  }, [loadAttempt]);
 
   useEffect(() => {
-    if (!isLoaded || isWritable) return;
+    if (!isLoaded || isWritable || loadError) return;
     window.localStorage.setItem(LOCAL_STORAGE_KEY, JSON.stringify(courses));
-  }, [courses, isLoaded, isWritable]);
+  }, [courses, isLoaded, isWritable, loadError]);
 
   const semesters = useMemo(() => getSemesters(courses), [courses]);
   const stats = useMemo(() => getCourseStats(courses), [courses]);
@@ -256,7 +256,7 @@ export function UniDashboard({ initialCourses, isProtected = false }: UniDashboa
           </div>
           <div className="flex items-center gap-2 text-sm">
             <span role="status" className="whitespace-nowrap rounded border border-line px-2 py-1 text-faint dark:border-line-dark dark:text-faint-dark">
-              {!isLoaded ? "Loading" : isSaving ? "Saving" : message ? "Check status" : isWritable ? "Synced" : "Saved on device"}
+              {!isLoaded ? "Loading" : loadError ? "Not synced" : isSaving ? "Saving" : message ? "Check status" : isWritable ? "Synced" : "Saved on device"}
             </span>
             {isProtected ? (
               <button
@@ -274,6 +274,16 @@ export function UniDashboard({ initialCourses, isProtected = false }: UniDashboa
         {message && isLoaded ? <p role="alert" className="text-sm text-faint dark:text-faint-dark">{message}</p> : null}
       </header>
 
+      {!isLoaded ? <UniDashboardSkeleton /> : loadError ? (
+        <section className="space-y-3 border-y border-line py-6 dark:border-line-dark">
+          <p role="alert">{loadError}</p>
+          <button type="button" onClick={() => {
+            setIsLoaded(false);
+            setLoadError("");
+            setLoadAttempt((attempt) => attempt + 1);
+          }} className="min-h-11 text-sm text-ink underline underline-offset-4 dark:text-ink-dark">Retry</button>
+        </section>
+      ) : <>
       <section className="grid grid-cols-2 gap-2 sm:gap-3 lg:grid-cols-4">
         <Stat label="Completed ECTS" value={
           <span className="inline-flex flex-wrap items-baseline gap-x-1.5 sm:gap-x-2">
@@ -521,6 +531,7 @@ export function UniDashboard({ initialCourses, isProtected = false }: UniDashboa
         </form>
         </div>
       </section>
+      </>}
     </div>
   );
 
@@ -558,8 +569,16 @@ function CourseList({
 
   return (
     <div className="overflow-hidden border border-line dark:border-line-dark">
-      <div className="md:overflow-x-auto" role="region" aria-label="Courses" tabIndex={0}>
-        <table role="table" className="block w-full text-left text-sm md:table md:min-w-[640px]">
+      <div role="region" aria-label="Courses">
+        <table role="table" className="block w-full text-left text-sm md:table md:table-fixed">
+          <colgroup className="hidden md:table-column-group">
+            <col />
+            <col className="w-[5.5rem]" />
+            <col className="w-16" />
+            <col className="w-20" />
+            <col className="w-[7.5rem]" />
+            <col className="w-[6.5rem]" />
+          </colgroup>
           <thead role="rowgroup" className="block border-b border-line text-faint dark:border-line-dark dark:text-faint-dark md:table-header-group">
             <tr role="row" className="grid grid-cols-3 md:table-row">
               {courseColumns.map(({ key, label }) => {
@@ -570,7 +589,7 @@ function CourseList({
                   <th role="columnheader" key={key} scope="col" aria-sort={active ? sortDirection === "asc" ? "ascending" : "descending" : "none"} className="min-w-0 font-medium">
                     <button type="button" onClick={() => onSort(key)} title={`Sort by ${label.toLowerCase()}, ${nextOrder}`}
                       aria-label={`Sort by ${label.toLowerCase()}, ${nextOrder}`}
-                      className={`flex min-h-11 w-full items-center gap-1 px-2 py-3 text-left transition-colors hover:text-ink focus-visible:outline-2 focus-visible:outline-offset-[-2px] dark:hover:text-ink-dark md:whitespace-nowrap md:px-3 ${key === "credits" ? "md:justify-end" : ""} ${active ? "text-ink dark:text-ink-dark" : ""}`}>
+                      className={`flex min-h-11 w-full items-center gap-1 px-2 py-3 text-left transition-colors hover:text-ink focus-visible:outline-2 focus-visible:outline-offset-[-2px] dark:hover:text-ink-dark md:whitespace-nowrap ${key === "credits" ? "md:justify-end" : ""} ${active ? "text-ink dark:text-ink-dark" : ""}`}>
                       <span className="min-w-0 [overflow-wrap:anywhere]">{label}</span><Icon size={14} className={`shrink-0 ${active ? "" : "opacity-40"}`} aria-hidden="true" />
                     </button>
                   </th>
@@ -583,9 +602,9 @@ function CourseList({
               <tr
                 role="row"
                 key={course.id}
-                className="grid grid-cols-[minmax(0,1fr)_minmax(0,1fr)_minmax(10ch,1fr)] gap-x-3 gap-y-3 border-b border-line p-3 last:border-b-0 dark:border-line-dark md:table-row md:p-0"
+                className="grid grid-cols-[minmax(0,1fr)_minmax(0,1fr)_max-content] gap-x-3 gap-y-3 border-b border-line p-3 last:border-b-0 dark:border-line-dark md:table-row md:p-0"
               >
-                <td role="cell" className="col-span-3 min-w-0 md:min-w-[180px] md:max-w-[360px] md:px-3 md:py-3">
+                <td role="cell" className="col-span-3 min-w-0 md:px-2 md:py-3">
                   <button
                     type="button"
                     disabled={isSaving}
@@ -600,20 +619,20 @@ function CourseList({
                     </span>
                   ) : null}
                 </td>
-                <td role="cell" className="min-w-0 font-mono [overflow-wrap:anywhere] md:px-3 md:py-3">
+                <td role="cell" className="min-w-0 font-mono [overflow-wrap:anywhere] md:px-2 md:py-3">
                   <MobileColumnLabel>Semester</MobileColumnLabel>{course.semester}
                 </td>
-                <td role="cell" className="min-w-0 font-mono md:px-3 md:py-3 md:text-right">
+                <td role="cell" className="min-w-0 font-mono md:px-2 md:py-3 md:text-right">
                   <MobileColumnLabel>ECTS</MobileColumnLabel>{formatNumber(course.credits)}
                 </td>
-                <td role="cell" className="min-w-0 md:px-3 md:py-3">
+                <td role="cell" className="min-w-0 md:px-2 md:py-3">
                   <MobileColumnLabel>Status</MobileColumnLabel>
                   <StatusBadge status={course.status} />
                 </td>
-                <td role="cell" className="col-span-2 min-w-0 [overflow-wrap:anywhere] md:px-3 md:py-3">
+                <td role="cell" className="col-span-2 min-w-0 whitespace-normal break-normal [overflow-wrap:normal] md:px-2 md:py-3">
                   <MobileColumnLabel>Grade</MobileColumnLabel>{displayValue(course.grade)}
                 </td>
-                <td role="cell" className="whitespace-nowrap md:px-3 md:py-3">
+                <td role="cell" className="col-start-3 whitespace-nowrap md:px-2 md:py-3">
                   <MobileColumnLabel>Exam</MobileColumnLabel>{displayValue(course.examDate)}
                 </td>
               </tr>
