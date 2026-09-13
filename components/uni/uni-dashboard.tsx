@@ -326,7 +326,11 @@ export function UniDashboard({ initialCourses, isProtected = false }: UniDashboa
                 </button>
               ))}
             </div>
-            <span className="text-sm text-faint dark:text-faint-dark">{filteredCourses.length} courses</span>
+            <span className="flex flex-wrap items-center gap-x-2 py-2 text-sm text-faint dark:text-faint-dark">
+              <span className="whitespace-nowrap">{filteredCourses.length} courses</span>
+              <span aria-hidden="true">·</span>
+              <span className="whitespace-nowrap">{formatNumber(filteredCourses.reduce((sum, course) => sum + course.credits, 0))} ECTS</span>
+            </span>
           </div>
           <div className="grid grid-cols-2 gap-3 border-b border-line pb-4 dark:border-line-dark sm:grid-cols-[minmax(0,1fr)_150px_130px]">
             <label className="col-span-2 min-w-0 space-y-1 sm:col-span-1">
@@ -579,7 +583,7 @@ function CourseList({
               <tr
                 role="row"
                 key={course.id}
-                className="grid grid-cols-3 gap-x-3 gap-y-3 border-b border-line p-3 last:border-b-0 dark:border-line-dark md:table-row md:p-0"
+                className="grid grid-cols-[minmax(0,1fr)_minmax(0,1fr)_minmax(10ch,1fr)] gap-x-3 gap-y-3 border-b border-line p-3 last:border-b-0 dark:border-line-dark md:table-row md:p-0"
               >
                 <td role="cell" className="col-span-3 min-w-0 md:min-w-[180px] md:max-w-[360px] md:px-3 md:py-3">
                   <button
@@ -609,7 +613,7 @@ function CourseList({
                 <td role="cell" className="col-span-2 min-w-0 [overflow-wrap:anywhere] md:px-3 md:py-3">
                   <MobileColumnLabel>Grade</MobileColumnLabel>{displayValue(course.grade)}
                 </td>
-                <td role="cell" className="min-w-0 [overflow-wrap:anywhere] md:px-3 md:py-3">
+                <td role="cell" className="whitespace-nowrap md:px-3 md:py-3">
                   <MobileColumnLabel>Exam</MobileColumnLabel>{displayValue(course.examDate)}
                 </td>
               </tr>
