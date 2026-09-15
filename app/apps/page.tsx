@@ -21,11 +21,11 @@ export default function AppsPage() {
         <li>
           <Link href="/apps/tick" className="group block space-y-1">
             <div className="flex items-baseline gap-4">
-              <span className="font-mono text-[15px] font-medium text-ink group-hover:underline dark:text-ink-dark">
-                tick
+              <span className="text-[15px] font-medium text-ink group-hover:underline dark:text-ink-dark">
+                Tick
               </span>
               <span className="shrink-0 text-sm text-faint dark:text-faint-dark">
-                Time
+                Timer
               </span>
             </div>
             <p className="text-[15px] leading-6 text-muted dark:text-muted-dark">
