@@ -21,7 +21,8 @@ export function useTimeTracker() {
   const [running, setRunning] = useState<RunningTimer | null>(null);
   const [hydrated, setHydrated] = useState(false);
   const [isDatabaseBacked, setIsDatabaseBacked] = useState(false);
-  const [syncMessage, setSyncMessage] = useState("Loading entries.");
+  const [syncMessage, setSyncMessage] = useState("");
+  const [pendingRequests, setPendingRequests] = useState(0);
   const [now, setNow] = useState(() => Date.now());
   const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const runningRef = useRef<RunningTimer | null>(null);
@@ -36,9 +37,10 @@ export function useTimeTracker() {
         const response = await fetch("/api/tick/time-entries", { cache: "no-store" });
 
         if (response.status === 503) {
+          if (cancelled) return;
           setEntries(readLocalEntries());
           setIsDatabaseBacked(false);
-          setSyncMessage("Saved in this browser.");
+          setSyncMessage("");
           return;
         }
 
@@ -52,13 +54,13 @@ export function useTimeTracker() {
         if (!cancelled) {
           setEntries(payload.entries ?? []);
           setIsDatabaseBacked(true);
-          setSyncMessage("Saved to Neon.");
+          setSyncMessage("");
         }
       } catch (error) {
         if (!cancelled) {
           setEntries(readLocalEntries());
           setIsDatabaseBacked(false);
-          setSyncMessage(error instanceof Error ? error.message : "Saved in this browser.");
+          setSyncMessage(error instanceof Error ? error.message : "Could not load entries.");
         }
       } finally {
         if (!cancelled) setHydrated(true);
@@ -122,14 +124,17 @@ export function useTimeTracker() {
 
     if (!isDatabaseBacked) return;
 
+    setPendingRequests((count) => count + 1);
+    setSyncMessage("");
     try {
       const saved = await persistEntry("/api/tick/time-entries", entry);
       setEntries((previous) => previous.map((item) => (item.id === entry.id ? saved : item)));
-      setSyncMessage("Saved to Neon.");
     } catch (error) {
       setEntries((previous) => previous.filter((item) => item.id !== entry.id));
       setRunning(current);
       setSyncMessage(error instanceof Error ? error.message : "Could not save entry.");
+    } finally {
+      setPendingRequests((count) => count - 1);
     }
   }, [isDatabaseBacked]);
 
@@ -151,15 +156,18 @@ export function useTimeTracker() {
 
       if (!isDatabaseBacked) return;
 
+      setPendingRequests((count) => count + 1);
+      setSyncMessage("");
       try {
         const saved = await persistEntry("/api/tick/time-entries", entry);
         setEntries((previous) =>
           previous.map((item) => (item.id === entry.id ? saved : item)).sort(newestFirst),
         );
-        setSyncMessage("Saved to Neon.");
       } catch (error) {
         setEntries((previous) => previous.filter((item) => item.id !== entry.id));
         setSyncMessage(error instanceof Error ? error.message : "Could not save entry.");
+      } finally {
+        setPendingRequests((count) => count - 1);
       }
     },
     [isDatabaseBacked],
@@ -185,15 +193,18 @@ export function useTimeTracker() {
 
       if (!isDatabaseBacked || !entry) return;
 
+      setPendingRequests((count) => count + 1);
+      setSyncMessage("");
       try {
         const saved = await persistEntry(`/api/tick/time-entries/${id}`, entry, "PUT");
         setEntries((current) =>
           current.map((item) => (item.id === id ? saved : item)).sort(newestFirst),
         );
-        setSyncMessage("Saved to Neon.");
       } catch (error) {
         setEntries(previous);
         setSyncMessage(error instanceof Error ? error.message : "Could not update entry.");
+      } finally {
+        setPendingRequests((count) => count - 1);
       }
     },
     [entries, isDatabaseBacked],
@@ -206,14 +217,17 @@ export function useTimeTracker() {
 
       if (!isDatabaseBacked) return;
 
+      setPendingRequests((count) => count + 1);
+      setSyncMessage("");
       try {
         const response = await fetch(`/api/tick/time-entries/${id}`, { method: "DELETE" });
         const payload = (await response.json().catch(() => null)) as { error?: string } | null;
         if (!response.ok) throw new Error(payload?.error ?? "Could not delete entry.");
-        setSyncMessage("Saved to Neon.");
       } catch (error) {
         setEntries(previous);
         setSyncMessage(error instanceof Error ? error.message : "Could not delete entry.");
+      } finally {
+        setPendingRequests((count) => count - 1);
       }
     },
     [entries, isDatabaseBacked],
@@ -227,6 +241,7 @@ export function useTimeTracker() {
     running,
     elapsed,
     isDatabaseBacked,
+    isSyncing: !hydrated || pendingRequests > 0,
     syncMessage,
     start,
     stop,

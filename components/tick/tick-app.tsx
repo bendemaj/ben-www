@@ -2,8 +2,10 @@
 
 import { useState } from "react";
 import Link from "next/link";
+import { LockKeyhole } from "lucide-react";
 import { StatsView } from "@/components/tick/stats-view";
 import { TimerView } from "@/components/tick/timer-view";
+import { TimerSkeleton } from "@/components/tick/timer-skeleton";
 import { useTimeTracker } from "@/components/tick/use-time-tracker";
 
 type Tab = "track" | "stats";
@@ -16,6 +18,7 @@ export function TickApp({ isProtected = false }: { isProtected?: boolean }) {
     running,
     elapsed,
     isDatabaseBacked,
+    isSyncing,
     syncMessage,
     start,
     stop,
@@ -59,25 +62,27 @@ export function TickApp({ isProtected = false }: { isProtected?: boolean }) {
           </nav>
         </div>
 
-        <p className="text-xs leading-relaxed text-faint dark:text-faint-dark">
-          {isDatabaseBacked ? syncMessage : "Saved in this browser."}
+        <div className="flex flex-wrap items-center gap-3 text-xs text-faint dark:text-faint-dark">
+          <span role="status" className="whitespace-nowrap rounded border border-line px-2 py-1 dark:border-line-dark">
+            {isSyncing ? "Syncing" : syncMessage ? "Not synced" : isDatabaseBacked ? "Synced" : "Saved on device"}
+          </span>
           {isProtected ? (
-            <>
-              {" "}
               <button
                 type="button"
+                aria-label="Lock Tick"
+                title="Lock Tick"
                 onClick={() => void handleLogout()}
-                className="underline decoration-line underline-offset-4 hover:text-ink hover:decoration-current dark:decoration-line-dark dark:hover:text-ink-dark"
+                className="flex h-11 w-11 shrink-0 items-center justify-center rounded text-faint transition-colors hover:bg-line/50 hover:text-ink focus-visible:outline-2 dark:text-faint-dark dark:hover:bg-line-dark/50 dark:hover:text-ink-dark"
               >
-                lock
+                <LockKeyhole size={17} aria-hidden="true" />
               </button>
-            </>
           ) : null}
-        </p>
+        </div>
+        {syncMessage ? <p role="alert" className="text-xs leading-relaxed text-faint dark:text-faint-dark">{syncMessage}</p> : null}
       </header>
 
       {!hydrated ? (
-        <p className="text-xs text-faint dark:text-faint-dark">loading...</p>
+        <TimerSkeleton />
       ) : tab === "track" ? (
         <TimerView
           entries={entries}
